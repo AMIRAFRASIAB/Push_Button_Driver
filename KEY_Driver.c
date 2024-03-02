@@ -1,85 +1,95 @@
-/**
- * @info This File is a Driver For STM32 and 5 PushBottons
- */
+
+
+#include "stdbool.h"
+#include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_tim.h"
+#include "stm32f4xx_ll_rcc.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "KEY.h"
-#include "stdbool.h"
-#include "stm32g0xx_ll_bus.h"
-#include "stm32g0xx_ll_gpio.h"
+#include "kernel.h"
+#include "bsp.h"
 
 
 void    key_initPin (const Key_pinConfig* config);
 uint8_t key_readPin (const Key_pinConfig* config);
 void    key_callbacks_set (void);
-//--------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------
 // key callbacks
-void key_1_onPressed (void);
-void key_2_onPressed (void);
-void key_3_onPressed (void);
-void key_4_onPressed (void);
-void key_5_onPressed (void);
-//--------------------------------------------------
-static KeyValue key_value = KeyValue_none;
-//--------------------------------------------------
+/* Key_1 : Push Button */
+void key_1_onHold (void);
+void key_1_onReleased (void);
+/* Key_2 : Alpha Switch */
+void key_2_onReleased (void);
+//--------------------------------------------------------------------------------------------------------------
 const Key_pinConfig  KEY_CONFIGS[] = {
-  {GPIOA, LL_GPIO_PIN_0, ACTIVE_HIGH},
-  {GPIOB, LL_GPIO_PIN_4, ACTIVE_LOW },
-  {GPIOB, LL_GPIO_PIN_5, ACTIVE_LOW },
-  {GPIOB, LL_GPIO_PIN_6, ACTIVE_LOW },
-  {GPIOB, LL_GPIO_PIN_7, ACTIVE_LOW },
+  {&VIO_PUSH_BT, ACTIVE_HIGH},      /* Push Button */
+  {&VIO_ALPHA_SW, ACTIVE_LOW},      /* Alpha Switch */
 };
 const uint8_t KEY_LEN = LEN(KEY_CONFIGS);
 Key keys[LEN(KEY_CONFIGS)];
-//--------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------
 // key drivers 
 Key_driver keyDriver = {
   .initPin  = key_initPin,
   .readPin  = key_readPin,
 };
-//--------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------
 void key_initPin (const Key_pinConfig* config) {
   static bool first_call = true;
   if (first_call == true) {
-    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
-    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOB);
+    /* Timer Configuration For Key Bouncing */
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM6);
+    LL_TIM_DisableCounter(TIM6);
+    uint32_t tim6Clock = __LL_RCC_CALC_PCLK1_FREQ(SystemCoreClock, LL_RCC_GetAPB1Prescaler()) * (LL_RCC_GetAPB1Prescaler() == LL_RCC_APB1_DIV_1? 1 : 2);  
+    LL_TIM_SetPrescaler(TIM6, __LL_TIM_CALC_PSC(tim6Clock, 100000));
+    LL_TIM_SetAutoReload(TIM6, __LL_TIM_CALC_ARR(tim6Clock, LL_TIM_GetPrescaler(TIM6), 20));
+    LL_TIM_EnableIT_UPDATE(TIM6);
+    LL_TIM_ClearFlag_UPDATE(TIM6);
+    NVIC_SetPriority(TIM6_DAC_IRQn, KEY_TIM_IRQ_PRIORITY);
+    NVIC_EnableIRQ(TIM6_DAC_IRQn);
     first_call = false;
   }
-  LL_GPIO_SetPinMode(config->GPIO, config->pinNumber, LL_GPIO_MODE_INPUT);
-  LL_GPIO_SetPinPull(config->GPIO, config->pinNumber, LL_GPIO_PULL_NO);
-  LL_GPIO_LockPin(config->GPIO, config->pinNumber);
+  vio_init(config->VIO, true);
 }
 
 uint8_t key_readPin (const Key_pinConfig* config) {
-  return LL_GPIO_IsInputPinSet(config->GPIO, config->pinNumber);
+  return LL_GPIO_IsInputPinSet(LL_VIO(config->VIO[0]));
 }
-//--------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------
 void key_callbacks_set (void) {
-  keys[0].callBack.onPressed    = key_1_onPressed;
-  keys[1].callBack.onPressed    = key_2_onPressed;
-  keys[2].callBack.onPressed    = key_3_onPressed;
-  keys[3].callBack.onPressed    = key_4_onPressed;
-  keys[4].callBack.onPressed    = key_5_onPressed;
+  keys[0].callBack.onHold     = key_1_onHold;
+  keys[0].callBack.onReleased = key_1_onReleased;
+  keys[1].callBack.onReleased = key_2_onReleased;
+  LL_TIM_EnableCounter(TIM6);
 }
-//--------------------------------------------------
-void key_1_onPressed (void) {
-  key_value = KeyValue_pwr;
+//--------------------------------------------------------------------------------------------------------------
+/* Key Callbacks */
+//--------------------------------------------------------------------------------------------------------------
+static uint8_t onHoldCounter = 0;
+void key_1_onHold (void) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  onHoldCounter++;
+  if (onHoldCounter >= 18) {
+    xTaskNotifyFromISR(tKernelHandle, 1 << 0, eSetBits, &xHigherPriorityTaskWoken);
+  }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-void key_2_onPressed (void) {
-  key_value = KeyValue_back;
+//--------------------------------------------------------------------------------------------------------------
+void key_1_onReleased (void) {
+  onHoldCounter = 0;
 }
-void key_3_onPressed (void) {
-  key_value = KeyValue_enter;
+//--------------------------------------------------------------------------------------------------------------
+void key_2_onReleased (void) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xTaskNotifyFromISR(tKernelHandle, 1 << 0, eSetBits, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-void key_4_onPressed (void) {
-  key_value = KeyValue_up;
-}
-void key_5_onPressed (void) {
-  key_value = KeyValue_down;
-}
-//--------------------------------------------------
-void key_reset (void) {
-  key_value = KeyValue_none;
-}
-KeyValue key_get (void) {
-  return key_value;
+//--------------------------------------------------------------------------------------------------------------
+void TIM6_DAC_IRQHandler (void) {
+  LL_TIM_ClearFlag_UPDATE(TIM6);
+  key_handle(keys, KEY_LEN);
 }

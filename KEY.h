@@ -1,11 +1,11 @@
-//in the name of GOD
+
 
 /* In The Name Of GOD */
 
 /**
  * @info  if You Need ActiveHigh Keys too, just Enable This Flag
  */
-#define ACTIVE_HIGH_KEYS_ENABLE     0
+#define ACTIVE_HIGH_KEYS_ENABLE     1
 
 #ifndef __KEY_H_INCLUDED_
 #define __KEY_H_INCLUDED_
@@ -15,8 +15,9 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include "gpio.h"
 #include <stdio.h>
+#include "stm32f4xx_ll_gpio.h"
+#include "bsp.h"
 
 #define LEN(x)  (sizeof(x) / sizeof(*x))
 
@@ -32,7 +33,7 @@ typedef union {
         opFn    fn[4];
     };
 } CallBack;
-//------------------------- KEYState : ----------------------------------
+//------------------------- KEYState : --------------------------------------
 typedef enum {
     onHold        = 0x00,
     onReleased    = 0x01,
@@ -48,14 +49,12 @@ typedef enum {
 #endif // ACTIVE_HIGH_KEYS_ENABLE
 //----------------------- Key_pinConfig : -----------------------------------
 typedef struct {
-    GPIO_TypeDef*                   GPIO;
-    const uint32_t                  pinNumber;
-
+    const vio_t*                    VIO;
     #if (ACTIVE_HIGH_KEYS_ENABLE == 1)
     const  ActiveState_typeDef      active_state;
     #endif // ACTIVE_HIGH_KEYS_ENABLE
 } Key_pinConfig;
-//---------------------------- Key : -----------------------------------------
+//---------------------------- Key : ----------------------------------------
 typedef struct {
     CallBack                callBack;
     const Key_pinConfig*    config;
