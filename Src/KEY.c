@@ -6,6 +6,9 @@ static const Key_driver* __driver = NULL;
 //---------------------------------------------------------------------------
 void key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_driver* driver){
   __driver = driver;
+  if (driver == NULL) {
+    return;
+  }
   while (len-- > 0) {
     __driver->initPin(configs);
     keys->config = configs;
@@ -16,6 +19,10 @@ void key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_dr
     keys->callBack.fn[onNone]           = NULL;
     keys++;
     configs++;
+  }
+  if (__driver != NULL) {
+    __driver->callbackSet();
+    __driver->timerInit();
   }
 }
 //---------------------------------------------------------------------------

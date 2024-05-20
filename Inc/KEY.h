@@ -61,16 +61,20 @@ typedef struct {
     KeyState                state;
 } Key;
 //------------------------    Drivers : -------------------------------------
-typedef void    (*Key_initPinFn) (const Key_pinConfig*);
-typedef uint8_t (*Key_readPinFn) (const Key_pinConfig*);
+typedef void    (*Key_initPinFn)      (const Key_pinConfig*);
+typedef uint8_t (*Key_readPinFn)      (const Key_pinConfig*);
+typedef void    (*key_callbackSetFn)  (void);
+typedef void    (*key_timerInitFn)    (void);
 
 typedef struct {
-    Key_initPinFn   initPin;
-    Key_readPinFn   readPin;
+    Key_initPinFn       initPin;
+    Key_readPinFn       readPin;
+    key_callbackSetFn   callbackSet;
+    key_timerInitFn     timerInit;
 } Key_driver;
 //---------------------------------------------------------------------------
 void key_handle (Key* keys, uint8_t len);
-void key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_driver* driver);
+void key_init (Key* keys, const Key_pinConfig* configs, uint8_t len, const Key_driver* driver);
 
 
 //exported values
