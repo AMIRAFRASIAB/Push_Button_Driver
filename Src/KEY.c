@@ -2,34 +2,33 @@
 /* In The Name of GOD */
 #include "KEY.h"
 //---------------------------------------------------------------------------
-static const Key_driver* __driver = NULL;
+static const Key_driver* __DRIVER = NULL;
 //---------------------------------------------------------------------------
-void key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_driver* driver){
-  __driver = driver;
-  if (driver == NULL) {
-    return;
+bool key_init (Key* keys,const Key_pinConfig* CONFIGS, uint8_t len, const Key_driver* DRIVER){
+  __DRIVER = DRIVER;
+  if (DRIVER == NULL || keys == NULL || CONFIGS == NULL || len == 0) {
+    return false;
   }
   while (len-- > 0) {
-    __driver->initPin(configs);
-    keys->config = configs;
+    __DRIVER->initPin(CONFIGS);
+    keys->config = CONFIGS;
     keys->state = onNone;
     keys->callBack.fn[onHold]           = NULL;
     keys->callBack.fn[onReleased]       = NULL;
     keys->callBack.fn[onPressed]        = NULL;
     keys->callBack.fn[onNone]           = NULL;
     keys++;
-    configs++;
+    CONFIGS++;
   }
-  if (__driver != NULL) {
-    __driver->callbackSet();
-    __driver->timerInit();
-  }
+  __DRIVER->callbackSet();
+  __DRIVER->timerInit();
+  return true;
 }
 //---------------------------------------------------------------------------
 void key_handle (Key* keys, uint8_t len){
   uint8_t pin_value;
   while (len-- > 0) {
-    pin_value = __driver->readPin(keys->config);
+    pin_value = __DRIVER->readPin(keys->config);
     #if ACTIVE_HIGH_KEYS_ENABLE != 0
     if (keys->config->active_state == ACTIVE_HIGH)
     {

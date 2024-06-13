@@ -74,7 +74,7 @@ typedef struct {
 } Key_driver;
 //---------------------------------------------------------------------------
 void key_handle (Key* keys, uint8_t len);
-void key_init (Key* keys, const Key_pinConfig* configs, uint8_t len, const Key_driver* driver);
+bool key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_driver* driver);
 
 
 //exported values
@@ -82,7 +82,7 @@ extern Key_driver keyDriver;
 extern const uint8_t KEY_LEN;
 extern Key keys[];
 extern const Key_pinConfig  KEY_CONFIGS[];
-extern void key_callbacks_set (void);
+
 
 #ifdef __cplusplus
 };
