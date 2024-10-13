@@ -16,10 +16,9 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdio.h>
-#include "stm32f4xx_ll_gpio.h"
 #include "bsp.h"
 
-#define LEN(x)  (sizeof(x) / sizeof(*x))
+
 
 typedef void (*opFn) (void);
 typedef union {
@@ -47,20 +46,26 @@ typedef enum {
     ACTIVE_HIGH  = 0x01,
 } ActiveState_typeDef;
 #endif // ACTIVE_HIGH_KEYS_ENABLE
-//----------------------- Key_pinConfig : -----------------------------------
+//---------------------------------------------------------------------------
+/* Configs */
+//---------------------------------------------------------------------------
 typedef struct {
     const vio_t*                    VIO;
     #if (ACTIVE_HIGH_KEYS_ENABLE == 1)
     const  ActiveState_typeDef      active_state;
     #endif // ACTIVE_HIGH_KEYS_ENABLE
 } Key_pinConfig;
-//---------------------------- Key : ----------------------------------------
+//---------------------------------------------------------------------------
+/* Key */
+//---------------------------------------------------------------------------
 typedef struct {
     CallBack                callBack;
     const Key_pinConfig*    config;
     KeyState                state;
 } Key;
-//------------------------    Drivers : -------------------------------------
+//---------------------------------------------------------------------------
+/* Drivers */
+//---------------------------------------------------------------------------
 typedef void    (*Key_initPinFn)      (const Key_pinConfig*);
 typedef uint8_t (*Key_readPinFn)      (const Key_pinConfig*);
 typedef void    (*key_callbackSetFn)  (void);
@@ -73,15 +78,10 @@ typedef struct {
     key_timerInitFn     timerInit;
 } Key_driver;
 //---------------------------------------------------------------------------
-void key_handle (Key* keys, uint8_t len);
-bool key_init (Key* keys,const Key_pinConfig* configs, uint8_t len, const Key_driver* driver);
+void key_handle (void);
+bool key_init (Key* keys, const Key_pinConfig* CONFIGS, uint8_t len, const Key_driver* DRIVER);
 
 
-//exported values
-extern Key_driver keyDriver;
-extern const uint8_t KEY_LEN;
-extern Key keys[];
-extern const Key_pinConfig  KEY_CONFIGS[];
 
 
 #ifdef __cplusplus
